@@ -15,3 +15,5 @@ python-dotenv
 langchain-openai
 langchain-community
 pymongo
+textblob
+nltk
