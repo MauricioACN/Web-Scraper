@@ -25,18 +25,68 @@ def setup_driver():
 
 
 def click_on_review_count(driver):
-    """Click on the review count number to open reviews section"""
-    print("🔍 Looking for review count to click...")
+    """Click on the review count number to open reviews section and extract rating info"""
+    print("🔍 Looking for review count to click and extracting rating info...")
 
-    # Direct approach using the specific selector you found
+    # Enhanced script that both clicks and extracts rating information
     js_click_script = """
+        let result = {
+            success: false, 
+            text: '', 
+            average_rating: null, 
+            total_reviews: null
+        };
+        
         // Look for the specific bv_numReviews_text element
         let reviewElement = document.querySelector('.bv_numReviews_text');
         if (reviewElement && reviewElement.textContent.includes('(')) {
             let button = reviewElement.closest('button');
             if (button) {
+                // Extract review count from the review element
+                const fullText = reviewElement.textContent;
+                result.text = fullText;
+                
+                // Extract review count from parentheses
+                const reviewMatch = fullText.match(/\\((\\d+)\\)/);
+                if (reviewMatch) {
+                    result.total_reviews = parseInt(reviewMatch[1]);
+                }
+                
+                // Look for the average rating in the specific bv_avgRating_component_container
+                const ratingElement = document.querySelector('.bv_avgRating_component_container');
+                if (ratingElement) {
+                    const ratingText = ratingElement.textContent.trim();
+                    const ratingValue = parseFloat(ratingText);
+                    if (!isNaN(ratingValue) && ratingValue >= 0 && ratingValue <= 5) {
+                        result.average_rating = ratingValue;
+                    }
+                }
+                
+                // If still no rating found, try alternative selectors
+                if (!result.average_rating) {
+                    const altRatingSelectors = [
+                        '.bv-rating-value',
+                        '[data-rating]',
+                        '.rating-value',
+                        '.average-rating'
+                    ];
+                    
+                    for (let selector of altRatingSelectors) {
+                        const altElement = document.querySelector(selector);
+                        if (altElement) {
+                            const altText = altElement.textContent.trim() || altElement.getAttribute('data-rating');
+                            const altValue = parseFloat(altText);
+                            if (!isNaN(altValue) && altValue >= 0 && altValue <= 5) {
+                                result.average_rating = altValue;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
                 button.click();
-                return {success: true, text: reviewElement.textContent};
+                result.success = true;
+                return result;
             }
         }
         
@@ -47,19 +97,45 @@ def click_on_review_count(driver):
             if (text && /\\(\\d+\\)/.test(text) && text.includes('star')) {
                 let button = element.closest('button');
                 if (button) {
+                    result.text = text.substring(0, 50);
+                    
+                    // Extract review count
+                    const reviewMatch = text.match(/\\((\\d+)\\)/);
+                    if (reviewMatch) {
+                        result.total_reviews = parseInt(reviewMatch[1]);
+                    }
+                    
+                    // Look for the average rating in the specific container
+                    const ratingElement = document.querySelector('.bv_avgRating_component_container');
+                    if (ratingElement) {
+                        const ratingText = ratingElement.textContent.trim();
+                        const ratingValue = parseFloat(ratingText);
+                        if (!isNaN(ratingValue) && ratingValue >= 0 && ratingValue <= 5) {
+                            result.average_rating = ratingValue;
+                        }
+                    }
+                    
                     button.click();
-                    return {success: true, text: text.substring(0, 50)};
+                    result.success = true;
+                    return result;
                 }
             }
         }
         
-        return {success: false, text: 'No review count button found'};
+        result.text = 'No review count button found';
+        return result;
     """
 
     try:
         result = driver.execute_script(js_click_script)
         if result['success']:
             print(f"✅ Clicked review count: {result['text']}")
+            if result['average_rating']:
+                print(
+                    f"⭐ Found average rating: {result['average_rating']} stars")
+            if result['total_reviews']:
+                print(f"📊 Found total reviews: {result['total_reviews']}")
+
             time.sleep(3)  # Wait a bit
 
             # Now expand the reviews accordion if we're on mobile view
@@ -89,13 +165,13 @@ def click_on_review_count(driver):
             print(f"📱 Accordion action: {accordion_result['action']}")
 
             time.sleep(3)  # Wait for expansion
-            return True
+            return True, result
         else:
             print(f"⚠️ {result['text']}")
-            return False
+            return False, result
     except Exception as e:
         print(f"❌ Error clicking review count: {e}")
-        return False
+        return False, {'average_rating': None, 'total_reviews': None}
 
 
 def wait_for_reviews_section_to_load(driver, timeout=30):
@@ -385,21 +461,35 @@ def extract_reviews_from_product(driver, product_url):
     time.sleep(5)
 
     reviews = []
+    product_rating_summary = {
+        'average_rating': None,
+        'total_reviews': None,
+        'has_reviews': False
+    }
 
     try:
-        # Step 1: Click on the review count number to open reviews section
-        review_section_opened = click_on_review_count(driver)
+        # Step 1: Click on the review count and extract rating info in one step
+        review_section_opened, rating_data = click_on_review_count(driver)
+
+        # Store the rating information we got from clicking
+        if rating_data.get('total_reviews') or rating_data.get('average_rating'):
+            product_rating_summary = {
+                'average_rating': rating_data.get('average_rating'),
+                'total_reviews': rating_data.get('total_reviews'),
+                'has_reviews': True
+            }
 
         if not review_section_opened:
             print("❌ Could not open reviews section")
-            return reviews
+            # Still return the product rating summary even if we can't get individual reviews
+            return reviews, product_rating_summary
 
         # Step 2: Wait for reviews section to load
         reviews_loaded = wait_for_reviews_section_to_load(driver)
 
         if not reviews_loaded:
             print("❌ Reviews section did not load properly")
-            return reviews
+            return reviews, product_rating_summary
 
         # Step 3: Extract reviews with pagination
         reviews = handle_review_pagination(driver, max_pages=3)
@@ -421,7 +511,7 @@ def extract_reviews_from_product(driver, product_url):
     except Exception as e:
         print(f"❌ Error in extract_reviews_from_product: {e}")
 
-    return reviews
+    return reviews, product_rating_summary
 
 
 def save_reviews_to_file(all_reviews, filename="product_reviews.json"):
@@ -432,6 +522,29 @@ def save_reviews_to_file(all_reviews, filename="product_reviews.json"):
         print(f"Reviews saved to {filename}")
     except Exception as e:
         print(f"Error saving reviews: {e}")
+
+
+def save_product_ratings_to_file(product_ratings, filename="product_ratings_summary.json"):
+    """Save product rating summaries to JSON file"""
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(product_ratings, f, ensure_ascii=False, indent=2)
+        print(f"Product ratings summary saved to {filename}")
+    except Exception as e:
+        print(f"Error saving product ratings: {e}")
+
+
+def load_existing_product_ratings(filename="product_ratings_summary.json"):
+    """Load existing product ratings from JSON file if it exists"""
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"No existing {filename} found. Starting fresh.")
+        return {}
+    except Exception as e:
+        print(f"Error loading existing product ratings: {e}")
+        return {}
 
 
 def load_existing_reviews(filename="product_reviews.json"):
@@ -457,8 +570,9 @@ def main():
         print("Error: productos_scraped_v0.json not found. Please run the product scraper first.")
         return
 
-    # Load existing reviews (in case we're resuming)
+    # Load existing reviews and product ratings (in case we're resuming)
     all_reviews = load_existing_reviews()
+    product_ratings = load_existing_product_ratings()
 
     # Get URLs that have already been processed
     processed_urls = set([review["product_url"] for review in all_reviews])
@@ -485,29 +599,47 @@ def main():
             print(f"\n=== Processing product {i+1}/{len(products)} ===")
             print(f"Product: {product['title']}")
 
-            # Extract reviews from product page
-            reviews = extract_reviews_from_product(driver, product_url)
+            # Extract reviews and rating summary from product page
+            reviews, rating_summary = extract_reviews_from_product(
+                driver, product_url)
+
+            # Store the product rating summary
+            if rating_summary.get('has_reviews'):
+                product_ratings[product_url] = {
+                    'product_title': product['title'],
+                    'product_url': product_url,
+                    'average_rating': rating_summary.get('average_rating'),
+                    'total_reviews': rating_summary.get('total_reviews'),
+                    'rating_distribution': rating_summary.get('rating_distribution', {}),
+                    'extracted_at': time.strftime('%Y-%m-%d %H:%M:%S')
+                }
 
             # Add new reviews to the collection
             all_reviews.extend(reviews)
 
-            print(f"Found {len(reviews)} reviews for this product")
+            print(f"Found {len(reviews)} individual reviews for this product")
+            if rating_summary.get('has_reviews'):
+                print(
+                    f"Product rating: {rating_summary.get('average_rating')} stars ({rating_summary.get('total_reviews')} total reviews)")
             print(f"Total reviews so far: {len(all_reviews)}")
 
             # Save after each product to avoid data loss
             save_reviews_to_file(all_reviews)
+            save_product_ratings_to_file(product_ratings)
 
             # Small pause between products
             time.sleep(2)
 
         print(f"\n=== REVIEW EXTRACTION COMPLETED ===")
-        print(f"Total reviews extracted: {len(all_reviews)}")
-        print(f"Results saved to: product_reviews.json")
+        print(f"Total individual reviews extracted: {len(all_reviews)}")
+        print(f"Total products with rating summaries: {len(product_ratings)}")
+        print(f"Results saved to: product_reviews.json and product_ratings_summary.json")
 
     except Exception as e:
         print(f"Error in main process: {e}")
         # Save whatever we have collected so far
         save_reviews_to_file(all_reviews)
+        save_product_ratings_to_file(product_ratings)
 
     finally:
         driver.quit()
