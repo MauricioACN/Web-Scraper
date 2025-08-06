@@ -373,22 +373,6 @@ def handle_review_pagination(driver, max_pages=10):
     print(
         f"📄 Pagination complete: {len(all_reviews)} total reviews from {page_count + 1} pages")
 
-    # Search for specific names in all reviews (handle None values properly)
-    greg_reviews = []
-    for r in all_reviews:
-        reviewer = r.get('reviewer') or r.get('author') or ''
-        body = r.get('body') or r.get('content') or ''
-        if (reviewer and 'greg' in reviewer.lower()) or (body and 'greg' in body.lower()):
-            greg_reviews.append(r)
-
-    if greg_reviews:
-        print(f"🎯 FOUND {len(greg_reviews)} reviews mentioning Greg!")
-        for review in greg_reviews:
-            reviewer = review.get('reviewer') or review.get(
-                'author') or 'Unknown'
-            content = review.get('body') or review.get('content') or ''
-            print(f"   Greg review by {reviewer}: {content[:100]}...")
-
     return all_reviews
 
 
@@ -515,11 +499,6 @@ def main():
 
             # Small pause between products
             time.sleep(2)
-
-            # Test with just first few products initially
-            if i >= 2:  # Process only first 3 products for testing
-                print("\n=== TESTING MODE: Processing only first 3 products ===")
-                break
 
         print(f"\n=== REVIEW EXTRACTION COMPLETED ===")
         print(f"Total reviews extracted: {len(all_reviews)}")
