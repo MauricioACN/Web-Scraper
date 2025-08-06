@@ -6,7 +6,6 @@ This project extracts products and reviews from Canadian Tire using Selenium Web
 
 - **Product extraction**: Gets product list with titles, prices and URLs
 - **Review extraction**: Extracts all product reviews with automatic pagination
-- **Specific search**: Finds reviews by author (e.g: Greg) or specific content
 - **Mobile accordion handling**: Compatible with mobile and desktop versions
 - **Traceability**: Each review includes the source product URL
 
@@ -94,9 +93,6 @@ reviews = handle_review_pagination(driver, max_pages=3)  # Change number
 ```
 
 ## 🎯 Specific Use Cases
-
-### Search reviews by specific user
-The scraper automatically searches for "Greg" reviews and reports when found.
 
 ### Process single product
 Modify the URL in the code to test with a specific product.
