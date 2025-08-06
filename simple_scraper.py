@@ -10,7 +10,22 @@ from selenium.webdriver.chrome.service import Service
 
 # List of search URLs
 search_urls = [
-    "https://www.canadiantire.ca/en/search-results.html?q=bikes"
+    "https://www.canadiantire.ca/en/search-results.html?q=woodtools",
+    # "https://www.canadiantire.ca/en/search-results.html?q=bikes",
+    "https://www.canadiantire.ca/en/search-results.html?q=tools",
+    "https://www.canadiantire.ca/en/search-results.html?q=camping",
+    "https://www.canadiantire.ca/en/search-results.html?q=outdoor+furniture",
+    "https://www.canadiantire.ca/en/search-results.html?q=electronics",
+    "https://www.canadiantire.ca/en/search-results.html?q=home+appliances",
+    "https://www.canadiantire.ca/en/search-results.html?q=clothing",
+    "https://www.canadiantire.ca/en/search-results.html?q=footwear",
+    "https://www.canadiantire.ca/en/search-results.html?q=toys",
+    "https://www.canadiantire.ca/en/search-results.html?q=pet+supplies",
+    "https://www.canadiantire.ca/en/search-results.html?q=automotive",
+    "https://www.canadiantire.ca/en/search-results.html?q=cleaning+supplies",
+    "https://www.canadiantire.ca/en/search-results.html?q=health+and+beauty",
+    "https://www.canadiantire.ca/en/search-results.html?q=seasonal+items",
+    "https://www.canadiantire.ca/en/search-results.html?q=home+improvement"
 ]
 
 
